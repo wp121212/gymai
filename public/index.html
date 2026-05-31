@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waga</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  body { font-family: monospace; max-width: 700px; margin: 20px auto; padding: 0 16px; background: #111; color: #ccc; }
+  canvas { background: #1a1a1a; border-radius: 8px; margin-top: 12px; }
+  #stats { display: flex; gap: 16px; margin-top: 12px; font-size: 14px; }
+  #stats span { color: #00e5ff; }
+  #error { color: #f44; margin-top: 8px; }
+  button { margin-top: 8px; padding: 8px 16px; background: #222; color: #00e5ff; border: 1px solid #333; border-radius: 4px; cursor: pointer; font-family: monospace; }
+</style>
+</head>
+<body>
+<h2>Waga — Maj 2026</h2>
+<button onclick="load()">Odśwież</button>
+<div id="error"></div>
+<div id="stats"></div>
+<canvas id="chart"></canvas>
+
+<script>
+let chart;
+
+async function load() {
+  document.getElementById('error').textContent = '';
+  try {
+    const res = await fetch('/api/weights');
+    const data = await res.json();
+    if (data.error) { document.getElementById('error').textContent = data.error; return; }
+
+    const entries = data.filter(d => d.weight !== null);
+    const labels = data.map(d => d.date ? d.date.slice(8) : '');
+    const weights = data.map(d => d.weight);
+
+    // Stats
+    if (entries.length > 0) {
+      const vals = entries.map(e => e.weight);
+      const min = Math.min(...vals).toFixed(1);
+      const max = Math.max(...vals).toFixed(1);
+      const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
+      const delta = (vals[vals.length - 1] - vals[0]).toFixed(1);
+      document.getElementById('stats').innerHTML =
+        `Min: <span>${min}</span> | Śr: <span>${avg}</span> | Max: <span>${max}</span> | Δ: <span>${delta > 0 ? '+' : ''}${delta} kg</span>`;
+    }
+
+    // Chart
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Waga (kg)',
+          data: weights,
+          borderColor: '#00e5ff',
+          backgroundColor: 'rgba(0,229,255,0.1)',
+          fill: true,
+          tension: 0.3,
+          spanGaps: true,
+          pointRadius: 4,
+          pointBackgroundColor: '#00e5ff',
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { ticks: { color: '#888' }, grid: { color: '#222' } },
+          x: { ticks: { color: '#888' }, grid: { color: '#222' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  } catch (e) {
+    document.getElementById('error').textContent = 'Błąd: ' + e.message;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
