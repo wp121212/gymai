@@ -3,50 +3,312 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waga</title>
+<title>Waga — Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  body { font-family: monospace; max-width: 700px; margin: 20px auto; padding: 0 16px; background: #111; color: #ccc; }
-  canvas { background: #1a1a1a; border-radius: 8px; margin-top: 12px; }
-  #stats { display: flex; gap: 16px; margin-top: 12px; font-size: 14px; }
-  #stats span { color: #00e5ff; }
-  #error { color: #f44; margin-top: 8px; }
-  button { margin-top: 8px; padding: 8px 16px; background: #222; color: #00e5ff; border: 1px solid #333; border-radius: 4px; cursor: pointer; font-family: monospace; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: #060810;
+  color: #d1d9e6;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+.container { max-width: 800px; margin: 0 auto; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #00e5ff11, #00e5ff22);
+  border: 1px solid #00e5ff33;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #00e5ff;
+}
+.header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #e2e8f0;
+  letter-spacing: -0.5px;
+}
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid #00e5ff44;
+  border-radius: 10px;
+  color: #00e5ff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.btn-refresh:hover {
+  background: #00e5ff11;
+  border-color: #00e5ff88;
+  box-shadow: 0 0 20px #00e5ff15;
+}
+.btn-refresh.loading { opacity: 0.5; cursor: wait; }
+
+/* Stats */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: #0d1117;
+  border: 1px solid #1b2433;
+  border-radius: 12px;
+  padding: 14px 12px;
+  text-align: center;
+}
+.stat-label {
+  font-size: 11px;
+  color: #4a5568;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #00e5ff;
+}
+.stat-value.delta-up { color: #00ff88; }
+.stat-value.delta-down { color: #ff3355; }
+.stat-unit {
+  font-size: 12px;
+  color: #4a5568;
+  font-weight: 400;
+  margin-left: 2px;
+}
+.stat-icon {
+  font-size: 18px;
+  float: right;
+  margin-top: -2px;
+}
+
+/* Chart */
+.chart-container {
+  background: #0d1117;
+  border: 1px solid #1b2433;
+  border-radius: 14px;
+  padding: 20px 16px 12px;
+  position: relative;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #00e5ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-badge {
+  font-size: 11px;
+  color: #4a5568;
+  background: #1b2433;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+canvas { border-radius: 8px; }
+
+/* Y-axis zoom controls */
+.y-zoom {
+  position: absolute;
+  left: 4px;
+  top: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+}
+.y-zoom button {
+  width: 24px; height: 24px;
+  background: #1b2433;
+  border: 1px solid #2a3548;
+  border-radius: 6px;
+  color: #00e5ff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-weight: 700;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.y-zoom button:hover { background: #2a3548; border-color: #00e5ff55; }
+
+/* Error */
+#error {
+  color: #ff3355;
+  background: #ff335511;
+  border: 1px solid #ff335522;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: none;
+}
+#error.show { display: block; }
+
+/* Responsive */
+@media (max-width: 500px) {
+  .header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat-value { font-size: 20px; }
+  .header h1 { font-size: 22px; }
+}
 </style>
 </head>
 <body>
-<h2>Waga — Maj 2026</h2>
-<button onclick="load()">Odśwież</button>
-<div id="error"></div>
-<div id="stats"></div>
-<canvas id="chart"></canvas>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">📈</div>
+      <h1>Waga — Maj 2026</h1>
+    </div>
+    <button class="btn-refresh" onclick="load()" id="refreshBtn">
+      ↻ Odśwież
+    </button>
+  </div>
+
+  <div id="error"></div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats">
+    <div class="stat-card">
+      <div class="stat-label">Min</div>
+      <div class="stat-value" id="stat-min">—<span class="stat-unit">kg</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Śr</div>
+      <div class="stat-value" id="stat-avg">—<span class="stat-unit">kg</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max</div>
+      <div class="stat-value" id="stat-max">—<span class="stat-unit">kg</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Δ<span class="stat-icon" id="stat-arrow"></span></div>
+      <div class="stat-value" id="stat-delta">—<span class="stat-unit">kg</span></div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-container">
+    <div class="chart-header">
+      <div class="chart-title">📈 Waga (kg)</div>
+      <div class="chart-badge">Maj 2026</div>
+    </div>
+    <div class="y-zoom">
+      <button onclick="zoomY(-1)" title="Zoom in (zawęź zakres)">+</button>
+      <button onclick="zoomY(1)" title="Zoom out (rozszerz zakres)">−</button>
+      <button onclick="panY(-0.5)" title="Przesuń w górę">▲</button>
+      <button onclick="panY(0.5)" title="Przesuń w dół">▼</button>
+      <button onclick="resetY()" title="Reset">⟲</button>
+    </div>
+    <canvas id="chart"></canvas>
+  </div>
+</div>
 
 <script>
 let chart;
+let yPadding = 1;
+let yOffset = 0;
+let dataMin = 0, dataMax = 100;
+
+function zoomY(dir) {
+  yPadding = Math.max(0.2, Math.min(10, yPadding + dir * 0.5));
+  updateYAxis();
+}
+function panY(dir) {
+  yOffset += dir;
+  updateYAxis();
+}
+function resetY() {
+  yPadding = 1; yOffset = 0;
+  updateYAxis();
+}
+function updateYAxis() {
+  if (!chart) return;
+  chart.options.scales.y.min = dataMin - yPadding + yOffset;
+  chart.options.scales.y.max = dataMax + yPadding + yOffset;
+  chart.update('none');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg; el.classList.add('show');
+}
 
 async function load() {
-  document.getElementById('error').textContent = '';
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading'); btn.textContent = '⟳ Ładuję...';
+  document.getElementById('error').classList.remove('show');
+
   try {
     const res = await fetch('/api/weights');
     const data = await res.json();
-    if (data.error) { document.getElementById('error').textContent = data.error; return; }
+    if (data.error) { showError(data.error); return; }
 
     const entries = data.filter(d => d.weight !== null);
     const labels = data.map(d => d.date ? d.date.slice(8) : '');
     const weights = data.map(d => d.weight);
 
-    // Stats
     if (entries.length > 0) {
       const vals = entries.map(e => e.weight);
-      const min = Math.min(...vals).toFixed(1);
-      const max = Math.max(...vals).toFixed(1);
-      const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
-      const delta = (vals[vals.length - 1] - vals[0]).toFixed(1);
-      document.getElementById('stats').innerHTML =
-        `Min: <span>${min}</span> | Śr: <span>${avg}</span> | Max: <span>${max}</span> | Δ: <span>${delta > 0 ? '+' : ''}${delta} kg</span>`;
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const delta = vals[vals.length - 1] - vals[0];
+
+      dataMin = min; dataMax = max;
+      yPadding = 1; yOffset = 0;
+
+      document.getElementById('stat-min').innerHTML = `${min.toFixed(1)}<span class="stat-unit">kg</span>`;
+      document.getElementById('stat-avg').innerHTML = `${avg.toFixed(1)}<span class="stat-unit">kg</span>`;
+      document.getElementById('stat-max').innerHTML = `${max.toFixed(1)}<span class="stat-unit">kg</span>`;
+
+      const deltaEl = document.getElementById('stat-delta');
+      deltaEl.innerHTML = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}<span class="stat-unit">kg</span>`;
+      deltaEl.className = 'stat-value ' + (delta > 0 ? 'delta-up' : delta < 0 ? 'delta-down' : '');
+      document.getElementById('stat-arrow').textContent = delta > 0 ? '↗' : delta < 0 ? '↘' : '→';
     }
 
-    // Chart
     if (chart) chart.destroy();
     chart = new Chart(document.getElementById('chart'), {
       type: 'line',
@@ -56,25 +318,58 @@ async function load() {
           label: 'Waga (kg)',
           data: weights,
           borderColor: '#00e5ff',
-          backgroundColor: 'rgba(0,229,255,0.1)',
+          backgroundColor: (ctx) => {
+            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+            g.addColorStop(0, 'rgba(0,229,255,0.15)');
+            g.addColorStop(1, 'rgba(0,229,255,0)');
+            return g;
+          },
           fill: true,
           tension: 0.3,
           spanGaps: true,
           pointRadius: 4,
           pointBackgroundColor: '#00e5ff',
+          pointBorderColor: '#060810',
+          pointBorderWidth: 2,
+          pointHoverRadius: 6,
+          borderWidth: 2.5,
         }]
       },
       options: {
         responsive: true,
+        animation: { duration: 600, easing: 'easeOutQuart' },
         scales: {
-          y: { ticks: { color: '#888' }, grid: { color: '#222' } },
-          x: { ticks: { color: '#888' }, grid: { color: '#222' } }
+          y: {
+            min: dataMin - yPadding,
+            max: dataMax + yPadding,
+            ticks: { color: '#4a5568', font: { family: "'JetBrains Mono'", size: 11 } },
+            grid: { color: '#1b2433', drawBorder: false }
+          },
+          x: {
+            ticks: { color: '#4a5568', font: { family: "'JetBrains Mono'", size: 10 } },
+            grid: { color: '#1b243322', drawBorder: false }
+          }
         },
-        plugins: { legend: { display: false } }
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#060810',
+            borderColor: '#00e5ff44',
+            borderWidth: 1,
+            titleFont: { family: "'JetBrains Mono'" },
+            bodyFont: { family: "'JetBrains Mono'" },
+            callbacks: {
+              title: (items) => `${items[0].label} Maja`,
+              label: (item) => ` ${item.raw} kg`
+            }
+          }
+        }
       }
     });
   } catch (e) {
-    document.getElementById('error').textContent = 'Błąd: ' + e.message;
+    showError('Błąd połączenia: ' + e.message);
+  } finally {
+    btn.classList.remove('loading'); btn.textContent = '↻ Odśwież';
   }
 }
 
